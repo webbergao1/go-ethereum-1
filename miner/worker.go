@@ -208,6 +208,7 @@ func (self *worker) mintBlock(now int64) {
 		log.Error("Only the dpos engine was allowed")
 		return
 	}
+	log.Info("=== enter mint block")
 	err := engine.CheckValidator(self.chain.CurrentBlock(), now)
 	if err != nil {
 		switch err {
@@ -215,7 +216,7 @@ func (self *worker) mintBlock(now int64) {
 			dpos.ErrMintFutureBlock,
 			dpos.ErrInvalidBlockValidator,
 			dpos.ErrInvalidMintBlockTime:
-			log.Debug("Failed to mint the block, while ", "err", err)
+			log.Info("Failed to mint the block, while ", "err", err)
 		default:
 			log.Error("Failed to mint the block", "err", err)
 		}

@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"math/big"
 	"sync"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/meitu/go-ethereum/accounts"
 	"github.com/meitu/go-ethereum/common"
 	"github.com/meitu/go-ethereum/consensus"
@@ -23,7 +23,6 @@ import (
 	"github.com/meitu/go-ethereum/rlp"
 	"github.com/meitu/go-ethereum/rpc"
 	"github.com/meitu/go-ethereum/trie"
-	lru "github.com/hashicorp/golang-lru"
 )
 
 const (
@@ -31,7 +30,7 @@ const (
 	extraSeal          = 65   // Fixed number of extra-data suffix bytes reserved for signer seal
 	inmemorySignatures = 4096 // Number of recent block signatures to keep in memory
 
-	blockInterval    = int64(10)
+	blockInterval    = int64(3)
 	epochInterval    = int64(86400)
 	maxValidatorSize = 21
 	safeSize         = maxValidatorSize*2/3 + 1
@@ -379,7 +378,7 @@ func (d *Dpos) Finalize(chain consensus.ChainReader, header *types.Header, state
 	genesis := chain.GetHeaderByNumber(0)
 	err := epochContext.tryElect(genesis, parent)
 	if err != nil {
-		return nil, fmt.Errorf("got error when elect next epoch, err: %s", err)
+		//return nil, fmt.Errorf("got error when elect next epoch, err: %s", err)
 	}
 
 	//update mint count trie
@@ -402,21 +401,28 @@ func (d *Dpos) checkDeadline(lastBlock *types.Block, now int64) error {
 }
 
 func (d *Dpos) CheckValidator(lastBlock *types.Block, now int64) error {
+	log.Info("====== enter CheckValidator")
 	if err := d.checkDeadline(lastBlock, now); err != nil {
 		return err
 	}
+	log.Info("====== enter CheckValidator 1")
 	dposContext, err := types.NewDposContextFromProto(d.db, lastBlock.Header().DposContext)
 	if err != nil {
 		return err
 	}
+	log.Info("====== enter CheckValidator 2")
 	epochContext := &EpochContext{DposContext: dposContext}
 	validator, err := epochContext.lookupValidator(now)
 	if err != nil {
 		return err
 	}
+	log.Info("====== enter CheckValidator 3")
 	if (validator == common.Address{}) || bytes.Compare(validator.Bytes(), d.signer.Bytes()) != 0 {
+		log.Info("validator: ", validator.String())
+		log.Info("singer: ", d.signer.String())
 		return ErrInvalidBlockValidator
 	}
+	log.Info("====== enter CheckValidator 4")
 	return nil
 }
 

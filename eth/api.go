@@ -86,6 +86,43 @@ func (api *PublicMinerAPI) Mining() bool {
 	return api.e.IsMining()
 }
 
+//== for test
+func (api *PublicMinerAPI) StartMine() error {
+	// Set the number of threads if the seal engine supports it
+	threads := new(int)
+	type threaded interface {
+		SetThreads(threads int)
+	}
+	if th, ok := api.e.engine.(threaded); ok {
+		log.Info("Updated mining threads", "threads", *threads)
+		th.SetThreads(*threads)
+	}
+	// Start the miner and return
+	if !api.e.IsMining() {
+		// Propagate the initial price point to the transaction pool
+		api.e.lock.RLock()
+		price := api.e.gasPrice
+		api.e.lock.RUnlock()
+
+		api.e.txPool.SetGasPrice(price)
+		return api.e.StartMining(true)
+	}
+	return nil
+}
+
+func (api *PublicMinerAPI) StopMine() bool {
+	type threaded interface {
+		SetThreads(threads int)
+	}
+	if th, ok := api.e.engine.(threaded); ok {
+		th.SetThreads(-1)
+	}
+	api.e.StopMining()
+	return true
+}
+
+//==
+
 // PrivateMinerAPI provides private RPC methods to control the miner.
 // These methods can be abused by external users and must be considered insecure for use by untrusted users.
 type PrivateMinerAPI struct {
